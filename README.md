@@ -34,3 +34,32 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+# ArcAgent Pay
+
+Autonomous AI agents that pay recurring bills using USDC on Arc / Circle stack.
+
+## Tracks
+- Agentic Economy
+- DeFi / Fintech Infrastructure
+
+## Current Progress (Mid-Submission)
+- [x] MetaMask connection
+- [x] Unified Balance (getBalances)
+- [x] Deposit USDC into Unified Balance (Base Sepolia)
+- [ ] Agents UI
+- [ ] Recurring Bills
+- [ ] Autonomous execution
+
+## Tech Stack
+- Next.js
+- Circle App Kit (Unified Balance, Send, Bridge, Swap)
+- Viem + MetaMask
+- Base Sepolia (testnet)
+
+## How to Run
+1. Clone the repo
+2. `npm install`
+3. Add `.env.local` with `NEXT_PUBLIC_PRIVATE_KEY` (optional)
+4. `npm run dev`
