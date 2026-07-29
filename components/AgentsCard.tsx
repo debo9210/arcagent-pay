@@ -2,21 +2,24 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wallet, Plus } from "lucide-react";
+import { Wallet, Plus, Play } from "lucide-react";
 
 interface Agent {
   id: string;
   name: string;
   status: "active" | "paused";
   monthlyLimit: string;
+  maxPerPayment: string;
+  spentThisMonth: string;
 }
 
 interface Props {
   agents: Agent[];
   onCreateAgent: () => void;
+  onRunAgent: (id: string) => void;
 }
 
-export default function AgentsCard({ agents, onCreateAgent }: Props) {
+export default function AgentsCard({ agents, onCreateAgent, onRunAgent }: Props) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -39,23 +42,36 @@ export default function AgentsCard({ agents, onCreateAgent }: Props) {
             {agents.map((agent) => (
               <div
                 key={agent.id}
-                className="flex items-center justify-between p-4 bg-zinc-900 rounded-xl"
+                className="p-4 bg-zinc-900 rounded-xl space-y-2"
               >
-                <div>
+                <div className="flex items-center justify-between">
                   <p className="font-medium">{agent.name}</p>
-                  <p className="text-sm text-zinc-400">
-                    Limit: ${agent.monthlyLimit}/month
-                  </p>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      agent.status === "active"
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-zinc-700 text-zinc-400"
+                    }`}
+                  >
+                    {agent.status}
+                  </span>
                 </div>
-                <span
-                  className={`text-xs px-2 py-1 rounded-full ${
-                    agent.status === "active"
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-zinc-700 text-zinc-400"
-                  }`}
+
+                <div className="text-sm text-zinc-400 space-y-1">
+                  <p>Monthly limit: ${agent.monthlyLimit}</p>
+                  <p>Max per payment: ${agent.maxPerPayment}</p>
+                  <p>Spent this month: ${agent.spentThisMonth}</p>
+                </div>
+
+                <Button
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={() => onRunAgent(agent.id)}
+                  disabled={agent.status !== "active"}
                 >
-                  {agent.status}
-                </span>
+                  <Play className="w-4 h-4 mr-1" />
+                  Run Agent
+                </Button>
               </div>
             ))}
           </div>

@@ -20,13 +20,15 @@ export default function ArcAgentPay() {
 
   // Agents & Bills state
   const [agents, setAgents] = useState([
-    {
-      id: "1",
-      name: "Main Bill Agent",
-      status: "active" as const,
-      monthlyLimit: "500",
-    },
-  ]);
+  {
+    id: "1",
+    name: "Main Bill Agent",
+    status: "active" as const,
+    monthlyLimit: "500",
+    maxPerPayment: "150",
+    spentThisMonth: "0",
+  },
+]);
 
   const [bills, setBills] = useState([
     {
@@ -40,6 +42,10 @@ export default function ArcAgentPay() {
   ]);
 
   const [showAddBill, setShowAddBill] = useState(false);
+
+  const [payments, setPayments] = useState<
+  { id: string; billName: string; amount: string; date: string; status: string }[]
+>([]);
 
   // ===== Connection =====
   const connectWithMetaMask = async () => {
@@ -123,15 +129,17 @@ export default function ArcAgentPay() {
 
   // ===== Agents & Bills handlers =====
   const handleCreateAgent = () => {
-    const newAgent = {
-      id: Date.now().toString(),
-      name: `Agent ${agents.length + 1}`,
-      status: "active" as const,
-      monthlyLimit: "300",
-    };
-    setAgents([...agents, newAgent]);
-    toast.success("New agent created");
+  const newAgent = {
+    id: Date.now().toString(),
+    name: `Agent ${agents.length + 1}`,
+    status: "active" as const,
+    monthlyLimit: "300",
+    maxPerPayment: "100",
+    spentThisMonth: "0",
   };
+  setAgents([...agents, newAgent]);
+  toast.success("New agent created");
+};
 
   const handleAddBill = (bill: {
     name: string;
@@ -155,6 +163,65 @@ export default function ArcAgentPay() {
     toast.info("Bill removed");
   };
 
+
+  const runAgent = (agentId: string) => {
+  const agent = agents.find((a) => a.id === agentId);
+  if (!agent || agent.status !== "active") {
+    toast.error("Agent is not active");
+    return;
+  }
+
+  // Find bills that are due (simple demo: all active bills)
+  const dueBills = bills.filter((b) => b.status === "active");
+
+  if (dueBills.length === 0) {
+    toast.info("No bills due right now");
+    return;
+  }
+
+  let totalSpent = parseFloat(agent.spentThisMonth);
+  const newPayments = [];
+
+  for (const bill of dueBills) {
+    const amount = parseFloat(bill.amount);
+
+    // Check policies
+    if (amount > parseFloat(agent.maxPerPayment)) {
+      toast.error(`Bill "${bill.name}" exceeds max per payment`);
+      continue;
+    }
+
+    if (totalSpent + amount > parseFloat(agent.monthlyLimit)) {
+      toast.error(`Monthly limit reached for ${agent.name}`);
+      break;
+    }
+
+    // Simulate successful payment
+    totalSpent += amount;
+    newPayments.push({
+      id: Date.now().toString() + Math.random(),
+      billName: bill.name,
+      amount: bill.amount,
+      date: new Date().toLocaleDateString(),
+      status: "paid",
+    });
+  }
+
+  if (newPayments.length > 0) {
+    // Update agent spent amount
+    setAgents(
+      agents.map((a) =>
+        a.id === agentId
+          ? { ...a, spentThisMonth: totalSpent.toFixed(2) }
+          : a
+      )
+    );
+
+    setPayments([...newPayments, ...payments]);
+    toast.success(`${newPayments.length} bill(s) paid by ${agent.name}`);
+  }
+};
+
   return (
     <div className="min-h-screen bg-zinc-950 p-8">
       <div className="max-w-5xl mx-auto">
@@ -169,7 +236,11 @@ export default function ArcAgentPay() {
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-          <AgentsCard agents={agents} onCreateAgent={handleCreateAgent} />
+          <AgentsCard
+            agents={agents}
+            onCreateAgent={handleCreateAgent}
+            onRunAgent={runAgent}
+          />
           <BillsCard
             bills={bills}
             onAddBill={() => setShowAddBill(true)}
