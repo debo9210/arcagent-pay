@@ -11,6 +11,7 @@ import DepositButton from "@/components/DepositButton";
 import AgentsCard from "@/components/AgentsCard";
 import BillsCard from "@/components/BillsCard";
 import AddBillModal from "@/components/AddBillModal";
+import PaymentHistory from "@/components/PaymentHistory";
 
 export default function ArcAgentPay() {
   const [balance, setBalance] = useState("0.00");
@@ -253,6 +254,8 @@ export default function ArcAgentPay() {
           onClose={() => setShowAddBill(false)}
           onAdd={handleAddBill}
         />
+
+        <PaymentHistory payments={payments} />
       </div>
     </div>
   );
