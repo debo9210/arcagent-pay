@@ -32,15 +32,15 @@ export default function ArcAgentPay() {
 ]);
 
   const [bills, setBills] = useState([
-    {
-      id: "1",
-      name: "Electricity",
-      amount: "85.00",
-      frequency: "Monthly" as const,
-      nextDate: "2026-08-01",
-      status: "active" as const,
-    },
-  ]);
+  {
+    id: "1",
+    name: "Electricity",
+    amount: "0.10",          // ← changed from 85.00
+    frequency: "Monthly" as const,
+    nextDate: "2026-08-01",
+    status: "active" as const,
+  },
+]);
 
   const [showAddBill, setShowAddBill] = useState(false);
 
@@ -223,6 +223,62 @@ export default function ArcAgentPay() {
   }
 };
 
+const payBill = async (bill: {
+  id: string;
+  name: string;
+  amount: string;
+}) => {
+  if (!connected || !address) {
+    toast.error("Connect wallet first");
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const provider = (window as any).ethereum;
+    await provider.request({ method: "eth_requestAccounts" });
+
+    const adapter = await createViemAdapterFromProvider({ provider });
+
+    // Real on-chain spend from Unified Balance
+    // For demo we send to the user's own address (or replace with a real biller address)
+    const result = await kit.unifiedBalance.spend({
+      amount: bill.amount,
+      token: "USDC",
+      from: { adapter },
+      to: {
+        adapter,
+        chain: "Base_Sepolia",
+        recipientAddress: address, // ← change later to real biller address
+      },
+    });
+
+    console.log("Spend result:", result);
+
+    // Record in payment history
+    setPayments([
+      {
+        id: Date.now().toString(),
+        billName: bill.name,
+        amount: bill.amount,
+        date: new Date().toLocaleDateString(),
+        status: "paid (on-chain)",
+      },
+      ...payments,
+    ]);
+
+    toast.success(`Paid $${bill.amount} for ${bill.name}`);
+
+    // Refresh balance
+    setTimeout(connectWithMetaMask, 8000);
+  } catch (error: any) {
+    console.error("Pay error:", error);
+    toast.error(error?.message || "Payment failed");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
   return (
     <div className="min-h-screen bg-zinc-950 p-8">
       <div className="max-w-5xl mx-auto">
@@ -256,6 +312,14 @@ export default function ArcAgentPay() {
         />
 
         <PaymentHistory payments={payments} />
+
+        <BillsCard
+          bills={bills}
+          onAddBill={() => setShowAddBill(true)}
+          onDeleteBill={handleDeleteBill}
+          onPayBill={payBill}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

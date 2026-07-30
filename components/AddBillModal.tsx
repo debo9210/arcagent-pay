@@ -58,7 +58,7 @@ export default function AddBillModal({ open, onClose, onAdd }: Props) {
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="50.00"
+              placeholder="0.10"
             />
           </div>
 
