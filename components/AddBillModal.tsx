@@ -22,17 +22,19 @@ export default function AddBillModal({ open, onClose, onAdd }: Props) {
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] = useState<"Daily" | "Weekly" | "Monthly">("Monthly");
   const [nextDate, setNextDate] = useState("");
+  const [billerAddress, setBillerAddress] = useState("");
 
   if (!open) return null;
 
   const handleSubmit = () => {
     if (!name || !amount || !nextDate) return;
 
-    onAdd({ name, amount, frequency, nextDate });
+    onAdd({ name, amount, frequency, nextDate, billerAddress });
     setName("");
     setAmount("");
     setFrequency("Monthly");
     setNextDate("");
+    setBillerAddress("");
     onClose();
   };
 
@@ -92,6 +94,15 @@ export default function AddBillModal({ open, onClose, onAdd }: Props) {
               Cancel
             </Button>
           </div>
+
+          <div>
+          <Label>Biller Address</Label>
+          <Input
+            value={billerAddress}
+            onChange={(e) => setBillerAddress(e.target.value)}
+            placeholder="0x..."
+          />
+        </div>
         </CardContent>
       </Card>
     </div>

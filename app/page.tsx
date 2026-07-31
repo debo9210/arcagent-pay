@@ -30,20 +30,29 @@ export default function ArcAgentPay() {
   ]);
 
   const [bills, setBills] = useState([
-    {
-      id: "1",
-      name: "Electricity",
-      amount: "0.10",
-      frequency: "Monthly" as const,
-      nextDate: "2026-08-01",
-      status: "active" as const,
-    },
-  ]);
+  {
+    id: "1",
+    name: "Electricity",
+    amount: "0.10",
+    frequency: "Monthly" as const,
+    nextDate: "2026-08-01",
+    status: "active" as const,
+    billerAddress: "0x15757D6C310B721A0AdBcc9A79ea52e3A2988273", // replace with any test address
+  },
+]);
 
   const [showAddBill, setShowAddBill] = useState(false);
 
   const [payments, setPayments] = useState<
-    { id: string; billName: string; amount: string; date: string; status: string }[]
+  {
+    id: string;
+    billName: string;
+    amount: string;
+    date: string;
+    status: string;
+    txHash?: string;
+    explorerUrl?: string;
+    }[]
   >([]);
 
   // ===== Connection =====
@@ -150,21 +159,22 @@ export default function ArcAgentPay() {
 
   // ===== Bills =====
   const handleAddBill = (bill: {
-    name: string;
-    amount: string;
-    frequency: "Daily" | "Weekly" | "Monthly";
-    nextDate: string;
-  }) => {
-    setBills([
-      ...bills,
-      {
-        id: Date.now().toString(),
-        ...bill,
-        status: "active" as const,
-      },
-    ]);
-    toast.success("Bill added successfully");
-  };
+  name: string;
+  amount: string;
+  frequency: "Daily" | "Weekly" | "Monthly";
+  nextDate: string;
+  billerAddress: string;
+}) => {
+  setBills([
+    ...bills,
+    {
+      id: Date.now().toString(),
+      ...bill,
+      status: "active" as const,
+    },
+  ]);
+  toast.success("Bill added successfully");
+};
 
   const handleDeleteBill = (id: string) => {
     setBills(bills.filter((b) => b.id !== id));
@@ -172,41 +182,58 @@ export default function ArcAgentPay() {
   };
 
   // ===== Real on-chain pay =====
-  const handlePayBill = async (bill: { id: string; name: string; amount: string }) => {
-    if (!connected || !address) {
-      toast.error("Connect wallet first");
-      return;
-    }
+  const handlePayBill = async (bill: {
+  id: string;
+  name: string;
+  amount: string;
+  billerAddress: string;
+}) => {
+  if (!connected || !address) {
+    toast.error("Connect wallet first");
+    return;
+  }
 
-    setIsLoading(true);
-    try {
-      const result = await spendUSDC({
+
+  if (!bill.billerAddress) {
+    toast.error("This bill has no biller address");
+    return;
+  }
+    
+
+  setIsLoading(true);
+  try {
+    const result = await spendUSDC({
+      amount: bill.amount,
+      recipientAddress: bill.billerAddress,
+    });
+
+    console.log("Spend result:", result);
+
+    setPayments([
+      {
+        id: Date.now().toString(),
+        billName: bill.name,
         amount: bill.amount,
-        recipientAddress: address, // change later to real biller
-      });
+        date: new Date().toLocaleDateString(),
+        status: "paid (on-chain)",
+        txHash: result.txHash,
+        explorerUrl: result.explorerUrl,
+      },
+      ...payments,
+    ]);
 
-      console.log("Spend result:", result);
+    toast.success(`Paid $${bill.amount} for ${bill.name}`);
+    setTimeout(handleConnect, 8000);
+  } catch (error: any) {
+    console.error("Pay error:", error);
+    toast.error(error?.message || "Payment failed");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-      setPayments([
-        {
-          id: Date.now().toString(),
-          billName: bill.name,
-          amount: bill.amount,
-          date: new Date().toLocaleDateString(),
-          status: "paid (on-chain)",
-        },
-        ...payments,
-      ]);
 
-      toast.success(`Paid $${bill.amount} for ${bill.name}`);
-      setTimeout(handleConnect, 8000);
-    } catch (error: any) {
-      console.error("Pay error:", error);
-      toast.error(error?.message || "Payment failed");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
 
   return (
     <div className="min-h-screen bg-zinc-950 p-8">

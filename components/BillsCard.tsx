@@ -11,13 +11,14 @@ interface Bill {
   frequency: "Daily" | "Weekly" | "Monthly";
   nextDate: string;
   status: "active" | "paused";
+  billerAddress: string;
 }
 
 interface Props {
   bills: Bill[];
   onAddBill: () => void;
   onDeleteBill: (id: string) => void;
-  onPayBill: (bill: Bill) => void;   // ← new
+  onPayBill: (bill: Bill) => void;
   isLoading: boolean;
 }
 
@@ -40,6 +41,7 @@ export default function BillsCard({
           Add Bill
         </Button>
       </CardHeader>
+
       <CardContent>
         {bills.length === 0 ? (
           <p className="text-sm text-zinc-400 text-center py-6">
@@ -58,6 +60,10 @@ export default function BillsCard({
                     <p className="text-sm text-zinc-400">
                       {bill.frequency} • Next: {bill.nextDate}
                     </p>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      To: {bill.billerAddress.slice(0, 6)}...
+                      {bill.billerAddress.slice(-4)}
+                    </p>
                   </div>
                   <p className="font-mono text-lg">${bill.amount}</p>
                 </div>
@@ -72,6 +78,7 @@ export default function BillsCard({
                     <Send className="w-4 h-4 mr-1" />
                     Pay Now
                   </Button>
+
                   <Button
                     variant="ghost"
                     size="icon"

@@ -9,6 +9,8 @@ interface Payment {
   amount: string;
   date: string;
   status: string;
+  txHash?: string;
+  explorerUrl?: string;
 }
 
 interface Props {
@@ -27,7 +29,7 @@ export default function PaymentHistory({ payments }: Props) {
       <CardContent>
         {payments.length === 0 ? (
           <p className="text-sm text-zinc-400 text-center py-6">
-            No payments yet. Run an agent to see history.
+            No payments yet. Pay a bill or run an agent to see history.
           </p>
         ) : (
           <div className="space-y-3">
@@ -40,13 +42,26 @@ export default function PaymentHistory({ payments }: Props) {
                   <p className="font-medium">{payment.billName}</p>
                   <p className="text-sm text-zinc-400">{payment.date}</p>
                 </div>
+
                 <div className="text-right">
                   <p className="font-mono text-lg text-emerald-400">
                     -${payment.amount}
                   </p>
-                  <p className="text-xs text-zinc-500 capitalize">
-                    {payment.status}
-                  </p>
+
+                  {payment.explorerUrl ? (
+                    <a
+                      href={payment.explorerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-400 hover:underline"
+                    >
+                      View tx
+                    </a>
+                  ) : (
+                    <p className="text-xs text-zinc-500 capitalize">
+                      {payment.status}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
