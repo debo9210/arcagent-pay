@@ -107,27 +107,46 @@ export default function ArcAgentPay() {
     toast.success("New agent created");
   };
 
-  const runAgent = (agentId: string) => {
-    const agent = agents.find((a) => a.id === agentId);
-    if (!agent || agent.status !== "active") {
-      toast.error("Agent is not active");
-      return;
-    }
+  // run agent
+  const runAgent = async (agentId: string) => {
+  const agent = agents.find((a) => a.id === agentId);
+  if (!agent || agent.status !== "active") {
+    toast.error("Agent is not active");
+    return;
+  }
 
-    const dueBills = bills.filter((b) => b.status === "active");
-    if (dueBills.length === 0) {
-      toast.info("No bills due right now");
-      return;
-    }
+  if (!connected || !address) {
+    toast.error("Connect wallet first");
+    return;
+  }
 
-    let totalSpent = parseFloat(agent.spentThisMonth);
-    const newPayments = [];
+  const dueBills = bills.filter((b) => b.status === "active");
 
+  if (dueBills.length === 0) {
+    toast.info("No bills due right now");
+    return;
+  }
+
+  setIsLoading(true);
+
+  let totalSpent = parseFloat(agent.spentThisMonth);
+  const newPayments: {
+    id: string;
+    billName: string;
+    amount: string;
+    date: string;
+    status: string;
+    txHash?: string;
+    explorerUrl?: string;
+  }[] = [];
+
+  try {
     for (const bill of dueBills) {
       const amount = parseFloat(bill.amount);
 
+      // Policy checks
       if (amount > parseFloat(agent.maxPerPayment)) {
-        toast.error(`Bill "${bill.name}" exceeds max per payment`);
+        toast.error(`"${bill.name}" exceeds max per payment ($${agent.maxPerPayment})`);
         continue;
       }
 
@@ -136,26 +155,61 @@ export default function ArcAgentPay() {
         break;
       }
 
-      totalSpent += amount;
-      newPayments.push({
-        id: Date.now().toString() + Math.random(),
-        billName: bill.name,
-        amount: bill.amount,
-        date: new Date().toLocaleDateString(),
-        status: "paid (simulated)",
-      });
+      if (!bill.billerAddress) {
+        toast.error(`"${bill.name}" has no biller address`);
+        continue;
+      }
+
+      // Real on-chain payment
+      try {
+        const result = await spendUSDC({
+          amount: bill.amount,
+          recipientAddress: bill.billerAddress,
+        });
+
+        console.log(`Paid ${bill.name}:`, result);
+
+        totalSpent += amount;
+
+        newPayments.push({
+          id: Date.now().toString() + Math.random(),
+          billName: bill.name,
+          amount: bill.amount,
+          date: new Date().toLocaleDateString(),
+          status: "paid (on-chain)",
+          txHash: result.txHash,
+          explorerUrl: result.explorerUrl,
+        });
+
+        toast.success(`Paid $${bill.amount} for ${bill.name}`);
+      } catch (err: any) {
+        console.error(`Failed to pay ${bill.name}:`, err);
+        toast.error(`Failed to pay ${bill.name}: ${err?.message || "error"}`);
+        // continue to next bill
+      }
     }
 
+    // Update agent spent amount
     if (newPayments.length > 0) {
       setAgents(
         agents.map((a) =>
-          a.id === agentId ? { ...a, spentThisMonth: totalSpent.toFixed(2) } : a
+          a.id === agentId
+            ? { ...a, spentThisMonth: totalSpent.toFixed(2) }
+            : a
         )
       );
+
       setPayments([...newPayments, ...payments]);
-      toast.success(`${newPayments.length} bill(s) paid by ${agent.name}`);
+      toast.success(
+        `${newPayments.length} bill(s) paid by ${agent.name}`
+      );
     }
-  };
+  } finally {
+    setIsLoading(false);
+    // Refresh balance after all payments
+    setTimeout(handleConnect, 10000);
+  }
+};
 
   // ===== Bills =====
   const handleAddBill = (bill: {
