@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { connectMetaMask, depositUSDC, spendUSDC } from "@/lib/actions";
+import { isBillDue, getNextDate } from "@/lib/utils";
 
 import DashboardHeader from "@/components/DashboardHeader";
 import BalanceCard from "@/components/BalanceCard";
@@ -120,10 +121,13 @@ export default function ArcAgentPay() {
     return;
   }
 
-  const dueBills = bills.filter((b) => b.status === "active");
+  // Only bills that are due
+  const dueBills = bills.filter(
+    (b) => b.status === "active" && isBillDue(b.nextDate)
+  );
 
   if (dueBills.length === 0) {
-    toast.info("No bills due right now");
+    toast.info("No bills are due right now");
     return;
   }
 
@@ -140,13 +144,15 @@ export default function ArcAgentPay() {
     explorerUrl?: string;
   }[] = [];
 
+  const updatedBills = [...bills];
+
   try {
     for (const bill of dueBills) {
       const amount = parseFloat(bill.amount);
 
       // Policy checks
       if (amount > parseFloat(agent.maxPerPayment)) {
-        toast.error(`"${bill.name}" exceeds max per payment ($${agent.maxPerPayment})`);
+        toast.error(`"${bill.name}" exceeds max per payment`);
         continue;
       }
 
@@ -160,7 +166,6 @@ export default function ArcAgentPay() {
         continue;
       }
 
-      // Real on-chain payment
       try {
         const result = await spendUSDC({
           amount: bill.amount,
@@ -181,15 +186,22 @@ export default function ArcAgentPay() {
           explorerUrl: result.explorerUrl,
         });
 
+        // Advance next payment date
+        const billIndex = updatedBills.findIndex((b) => b.id === bill.id);
+        if (billIndex !== -1) {
+          updatedBills[billIndex] = {
+            ...updatedBills[billIndex],
+            nextDate: getNextDate(bill.nextDate, bill.frequency),
+          };
+        }
+
         toast.success(`Paid $${bill.amount} for ${bill.name}`);
       } catch (err: any) {
         console.error(`Failed to pay ${bill.name}:`, err);
-        toast.error(`Failed to pay ${bill.name}: ${err?.message || "error"}`);
-        // continue to next bill
+        toast.error(`Failed to pay ${bill.name}`);
       }
     }
 
-    // Update agent spent amount
     if (newPayments.length > 0) {
       setAgents(
         agents.map((a) =>
@@ -198,15 +210,12 @@ export default function ArcAgentPay() {
             : a
         )
       );
-
+      setBills(updatedBills);
       setPayments([...newPayments, ...payments]);
-      toast.success(
-        `${newPayments.length} bill(s) paid by ${agent.name}`
-      );
+      toast.success(`${newPayments.length} due bill(s) paid by ${agent.name}`);
     }
   } finally {
     setIsLoading(false);
-    // Refresh balance after all payments
     setTimeout(handleConnect, 10000);
   }
 };
