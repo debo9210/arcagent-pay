@@ -11,6 +11,7 @@ import DepositButton from "@/components/DepositButton";
 import AgentsCard from "@/components/AgentsCard";
 import BillsCard from "@/components/BillsCard";
 import AddBillModal from "@/components/AddBillModal";
+import EditAgentModal from "@/components/EditAgentModal";
 import PaymentHistory from "@/components/PaymentHistory";
 
 export default function ArcAgentPay() {
@@ -31,28 +32,29 @@ export default function ArcAgentPay() {
   ]);
 
   const [bills, setBills] = useState([
-  {
-    id: "1",
-    name: "Electricity",
-    amount: "0.10",
-    frequency: "Monthly" as const,
-    nextDate: "2026-08-01",
-    status: "active" as const,
-    billerAddress: "0x15757D6C310B721A0AdBcc9A79ea52e3A2988273", // replace with any test address
-  },
-]);
+    {
+      id: "1",
+      name: "Electricity",
+      amount: "0.10",
+      frequency: "Monthly" as const,
+      nextDate: "2026-08-01",
+      status: "active" as const,
+      billerAddress: "0xc5899371b8ff1aba09cdc8c8d21ba976e43c95b6",
+    },
+  ]);
 
   const [showAddBill, setShowAddBill] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<null | (typeof agents)[0]>(null);
 
   const [payments, setPayments] = useState<
-  {
-    id: string;
-    billName: string;
-    amount: string;
-    date: string;
-    status: string;
-    txHash?: string;
-    explorerUrl?: string;
+    {
+      id: string;
+      billName: string;
+      amount: string;
+      date: string;
+      status: string;
+      txHash?: string;
+      explorerUrl?: string;
     }[]
   >([]);
 
@@ -108,195 +110,192 @@ export default function ArcAgentPay() {
     toast.success("New agent created");
   };
 
-  // run agent
+  const handleToggleStatus = (id: string) => {
+    setAgents(
+      agents.map((a) =>
+        a.id === id
+          ? { ...a, status: a.status === "active" ? "paused" : "active" }
+          : a
+      )
+    );
+    toast.success("Agent status updated");
+  };
+
+  const handleSaveAgent = (updated: (typeof agents)[0]) => {
+    setAgents(agents.map((a) => (a.id === updated.id ? updated : a)));
+    toast.success("Agent updated");
+  };
+
   const runAgent = async (agentId: string) => {
-  const agent = agents.find((a) => a.id === agentId);
-  if (!agent || agent.status !== "active") {
-    toast.error("Agent is not active");
-    return;
-  }
+    const agent = agents.find((a) => a.id === agentId);
+    if (!agent || agent.status !== "active") {
+      toast.error("Agent is not active");
+      return;
+    }
 
-  if (!connected || !address) {
-    toast.error("Connect wallet first");
-    return;
-  }
+    if (!connected || !address) {
+      toast.error("Connect wallet first");
+      return;
+    }
 
-  // Only bills that are due
-  const dueBills = bills.filter(
-    (b) => b.status === "active" && isBillDue(b.nextDate)
-  );
+    const dueBills = bills.filter(
+      (b) => b.status === "active" && isBillDue(b.nextDate)
+    );
 
-  if (dueBills.length === 0) {
-    toast.info("No bills are due right now");
-    return;
-  }
+    if (dueBills.length === 0) {
+      toast.info("No bills are due right now");
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
-  let totalSpent = parseFloat(agent.spentThisMonth);
-  const newPayments: {
-    id: string;
-    billName: string;
-    amount: string;
-    date: string;
-    status: string;
-    txHash?: string;
-    explorerUrl?: string;
-  }[] = [];
+    let totalSpent = parseFloat(agent.spentThisMonth);
+    const newPayments: typeof payments = [];
+    const updatedBills = [...bills];
 
-  const updatedBills = [...bills];
+    try {
+      for (const bill of dueBills) {
+        const amount = parseFloat(bill.amount);
 
-  try {
-    for (const bill of dueBills) {
-      const amount = parseFloat(bill.amount);
-
-      // Policy checks
-      if (amount > parseFloat(agent.maxPerPayment)) {
-        toast.error(`"${bill.name}" exceeds max per payment`);
-        continue;
-      }
-
-      if (totalSpent + amount > parseFloat(agent.monthlyLimit)) {
-        toast.error(`Monthly limit reached for ${agent.name}`);
-        break;
-      }
-
-      if (!bill.billerAddress) {
-        toast.error(`"${bill.name}" has no biller address`);
-        continue;
-      }
-
-      try {
-        const result = await spendUSDC({
-          amount: bill.amount,
-          recipientAddress: bill.billerAddress,
-        });
-
-        console.log(`Paid ${bill.name}:`, result);
-
-        totalSpent += amount;
-
-        newPayments.push({
-          id: Date.now().toString() + Math.random(),
-          billName: bill.name,
-          amount: bill.amount,
-          date: new Date().toLocaleDateString(),
-          status: "paid (on-chain)",
-          txHash: result.txHash,
-          explorerUrl: result.explorerUrl,
-        });
-
-        // Advance next payment date
-        const billIndex = updatedBills.findIndex((b) => b.id === bill.id);
-        if (billIndex !== -1) {
-          updatedBills[billIndex] = {
-            ...updatedBills[billIndex],
-            nextDate: getNextDate(bill.nextDate, bill.frequency),
-          };
+        if (amount > parseFloat(agent.maxPerPayment)) {
+          toast.error(`"${bill.name}" exceeds max per payment`);
+          continue;
         }
 
-        toast.success(`Paid $${bill.amount} for ${bill.name}`);
-      } catch (err: any) {
-        console.error(`Failed to pay ${bill.name}:`, err);
-        toast.error(`Failed to pay ${bill.name}`);
-      }
-    }
+        if (totalSpent + amount > parseFloat(agent.monthlyLimit)) {
+          toast.error(`Monthly limit reached for ${agent.name}`);
+          break;
+        }
 
-    if (newPayments.length > 0) {
-      setAgents(
-        agents.map((a) =>
-          a.id === agentId
-            ? { ...a, spentThisMonth: totalSpent.toFixed(2) }
-            : a
-        )
-      );
-      setBills(updatedBills);
-      setPayments([...newPayments, ...payments]);
-      toast.success(`${newPayments.length} due bill(s) paid by ${agent.name}`);
+        if (!bill.billerAddress) {
+          toast.error(`"${bill.name}" has no biller address`);
+          continue;
+        }
+
+        try {
+          const result = await spendUSDC({
+            amount: bill.amount,
+            recipientAddress: bill.billerAddress,
+          });
+
+          console.log(`Paid ${bill.name}:`, result);
+
+          totalSpent += amount;
+
+          newPayments.push({
+            id: Date.now().toString() + Math.random(),
+            billName: bill.name,
+            amount: bill.amount,
+            date: new Date().toLocaleDateString(),
+            status: "paid (on-chain)",
+            txHash: result.txHash,
+            explorerUrl: result.explorerUrl,
+          });
+
+          const billIndex = updatedBills.findIndex((b) => b.id === bill.id);
+          if (billIndex !== -1) {
+            updatedBills[billIndex] = {
+              ...updatedBills[billIndex],
+              nextDate: getNextDate(bill.nextDate, bill.frequency),
+            };
+          }
+
+          toast.success(`Paid $${bill.amount} for ${bill.name}`);
+        } catch (err: any) {
+          console.error(`Failed to pay ${bill.name}:`, err);
+          toast.error(`Failed to pay ${bill.name}`);
+        }
+      }
+
+      if (newPayments.length > 0) {
+        setAgents(
+          agents.map((a) =>
+            a.id === agentId
+              ? { ...a, spentThisMonth: totalSpent.toFixed(2) }
+              : a
+          )
+        );
+        setBills(updatedBills);
+        setPayments([...newPayments, ...payments]);
+        toast.success(`${newPayments.length} due bill(s) paid by ${agent.name}`);
+      }
+    } finally {
+      setIsLoading(false);
+      setTimeout(handleConnect, 10000);
     }
-  } finally {
-    setIsLoading(false);
-    setTimeout(handleConnect, 10000);
-  }
-};
+  };
 
   // ===== Bills =====
   const handleAddBill = (bill: {
-  name: string;
-  amount: string;
-  frequency: "Daily" | "Weekly" | "Monthly";
-  nextDate: string;
-  billerAddress: string;
-}) => {
-  setBills([
-    ...bills,
-    {
-      id: Date.now().toString(),
-      ...bill,
-      status: "active" as const,
-    },
-  ]);
-  toast.success("Bill added successfully");
-};
+    name: string;
+    amount: string;
+    frequency: "Daily" | "Weekly" | "Monthly";
+    nextDate: string;
+    billerAddress: string;
+  }) => {
+    setBills([
+      ...bills,
+      {
+        id: Date.now().toString(),
+        ...bill,
+        status: "active" as const,
+      },
+    ]);
+    toast.success("Bill added successfully");
+  };
 
   const handleDeleteBill = (id: string) => {
     setBills(bills.filter((b) => b.id !== id));
     toast.info("Bill removed");
   };
 
-  // ===== Real on-chain pay =====
   const handlePayBill = async (bill: {
-  id: string;
-  name: string;
-  amount: string;
-  billerAddress: string;
-}) => {
-  if (!connected || !address) {
-    toast.error("Connect wallet first");
-    return;
-  }
+    id: string;
+    name: string;
+    amount: string;
+    billerAddress: string;
+  }) => {
+    if (!connected || !address) {
+      toast.error("Connect wallet first");
+      return;
+    }
 
+    if (!bill.billerAddress) {
+      toast.error("This bill has no biller address");
+      return;
+    }
 
-  if (!bill.billerAddress) {
-    toast.error("This bill has no biller address");
-    return;
-  }
-    
-
-  setIsLoading(true);
-  try {
-    const result = await spendUSDC({
-      amount: bill.amount,
-      recipientAddress: bill.billerAddress,
-    });
-
-    console.log("Spend result:", result);
-
-    setPayments([
-      {
-        id: Date.now().toString(),
-        billName: bill.name,
+    setIsLoading(true);
+    try {
+      const result = await spendUSDC({
         amount: bill.amount,
-        date: new Date().toLocaleDateString(),
-        status: "paid (on-chain)",
-        txHash: result.txHash,
-        explorerUrl: result.explorerUrl,
-      },
-      ...payments,
-    ]);
+        recipientAddress: bill.billerAddress,
+      });
 
-    toast.success(`Paid $${bill.amount} for ${bill.name}`);
-    setTimeout(handleConnect, 8000);
-  } catch (error: any) {
-    console.error("Pay error:", error);
-    toast.error(error?.message || "Payment failed");
-  } finally {
-    setIsLoading(false);
-  }
-};
+      console.log("Spend result:", result);
 
+      setPayments([
+        {
+          id: Date.now().toString(),
+          billName: bill.name,
+          amount: bill.amount,
+          date: new Date().toLocaleDateString(),
+          status: "paid (on-chain)",
+          txHash: result.txHash,
+          explorerUrl: result.explorerUrl,
+        },
+        ...payments,
+      ]);
 
-
+      toast.success(`Paid $${bill.amount} for ${bill.name}`);
+      setTimeout(handleConnect, 8000);
+    } catch (error: any) {
+      console.error("Pay error:", error);
+      toast.error(error?.message || "Payment failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 p-8">
@@ -316,7 +315,11 @@ export default function ArcAgentPay() {
             agents={agents}
             onCreateAgent={handleCreateAgent}
             onRunAgent={runAgent}
+            onToggleStatus={handleToggleStatus}
+            onEditAgent={(agent) => setEditingAgent(agent)}
+            isLoading={isLoading}
           />
+
           <BillsCard
             bills={bills}
             onAddBill={() => setShowAddBill(true)}
@@ -330,6 +333,13 @@ export default function ArcAgentPay() {
           open={showAddBill}
           onClose={() => setShowAddBill(false)}
           onAdd={handleAddBill}
+        />
+
+        <EditAgentModal
+          open={!!editingAgent}
+          agent={editingAgent}
+          onClose={() => setEditingAgent(null)}
+          onSave={handleSaveAgent}
         />
 
         <PaymentHistory payments={payments} />

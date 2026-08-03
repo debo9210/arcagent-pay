@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import EditAgentModal from "@/components/EditAgentModal";
 
 interface Props {
   open: boolean;
@@ -103,6 +104,13 @@ export default function AddBillModal({ open, onClose, onAdd }: Props) {
             placeholder="0x..."
           />
         </div>
+
+        <EditAgentModal
+          open={!!editingAgent}
+          agent={editingAgent}
+          onClose={() => setEditingAgent(null)}
+          onSave={handleSaveAgent}
+        />
         </CardContent>
       </Card>
     </div>

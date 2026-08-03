@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wallet, Plus, Play } from "lucide-react";
+import { Wallet, Plus, Play, Pause, Pencil } from "lucide-react";
 
 interface Agent {
   id: string;
@@ -17,9 +17,19 @@ interface Props {
   agents: Agent[];
   onCreateAgent: () => void;
   onRunAgent: (id: string) => void;
+  onToggleStatus: (id: string) => void;
+  onEditAgent: (agent: Agent) => void;
+  isLoading: boolean;
 }
 
-export default function AgentsCard({ agents, onCreateAgent, onRunAgent }: Props) {
+export default function AgentsCard({
+  agents,
+  onCreateAgent,
+  onRunAgent,
+  onToggleStatus,
+  onEditAgent,
+  isLoading,
+}: Props) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -32,6 +42,7 @@ export default function AgentsCard({ agents, onCreateAgent, onRunAgent }: Props)
           New Agent
         </Button>
       </CardHeader>
+
       <CardContent>
         {agents.length === 0 ? (
           <p className="text-sm text-zinc-400 text-center py-6">
@@ -42,7 +53,7 @@ export default function AgentsCard({ agents, onCreateAgent, onRunAgent }: Props)
             {agents.map((agent) => (
               <div
                 key={agent.id}
-                className="p-4 bg-zinc-900 rounded-xl space-y-2"
+                className="p-4 bg-zinc-900 rounded-xl space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{agent.name}</p>
@@ -63,15 +74,37 @@ export default function AgentsCard({ agents, onCreateAgent, onRunAgent }: Props)
                   <p>Spent this month: ${agent.spentThisMonth}</p>
                 </div>
 
-                <Button
-                  size="sm"
-                  className="w-full mt-2"
-                  onClick={() => onRunAgent(agent.id)}
-                  disabled={agent.status !== "active"}
-                >
-                  <Play className="w-4 h-4 mr-1" />
-                  Run Agent
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => onRunAgent(agent.id)}
+                    disabled={isLoading || agent.status !== "active"}
+                  >
+                    <Play className="w-4 h-4 mr-1" />
+                    Run
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onToggleStatus(agent.id)}
+                  >
+                    {agent.status === "active" ? (
+                      <Pause className="w-4 h-4" />
+                    ) : (
+                      <Play className="w-4 h-4" />
+                    )}
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onEditAgent(agent)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
