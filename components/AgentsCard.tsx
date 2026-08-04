@@ -3,21 +3,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Wallet, Plus, Play, Pause, Pencil } from "lucide-react";
-
-interface Agent {
-  id: string;
-  name: string;
-  status: "active" | "paused";
-  monthlyLimit: string;
-  maxPerPayment: string;
-  spentThisMonth: string;
-}
+import type { Agent } from "@/lib/types";
 
 interface Props {
   agents: Agent[];
   onCreateAgent: () => void;
   onRunAgent: (id: string) => void;
   onToggleStatus: (id: string) => void;
+  onToggleAutoMode: (id: string) => void;
   onEditAgent: (agent: Agent) => void;
   isLoading: boolean;
 }
@@ -27,6 +20,7 @@ export default function AgentsCard({
   onCreateAgent,
   onRunAgent,
   onToggleStatus,
+  onToggleAutoMode,
   onEditAgent,
   isLoading,
 }: Props) {
@@ -57,15 +51,22 @@ export default function AgentsCard({
               >
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{agent.name}</p>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      agent.status === "active"
-                        ? "bg-emerald-500/20 text-emerald-400"
-                        : "bg-zinc-700 text-zinc-400"
-                    }`}
-                  >
-                    {agent.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {agent.autoMode && (
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400">
+                        auto
+                      </span>
+                    )}
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        agent.status === "active"
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : "bg-zinc-700 text-zinc-400"
+                      }`}
+                    >
+                      {agent.status}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="text-sm text-zinc-400 space-y-1">
@@ -74,7 +75,7 @@ export default function AgentsCard({
                   <p>Spent this month: ${agent.spentThisMonth}</p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
                     className="flex-1"
@@ -83,6 +84,14 @@ export default function AgentsCard({
                   >
                     <Play className="w-4 h-4 mr-1" />
                     Run
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant={agent.autoMode ? "default" : "outline"}
+                    onClick={() => onToggleAutoMode(agent.id)}
+                  >
+                    {agent.autoMode ? "Auto ON" : "Auto OFF"}
                   </Button>
 
                   <Button

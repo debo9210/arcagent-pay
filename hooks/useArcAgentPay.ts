@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { connectMetaMask, depositUSDC, spendUSDC } from "@/lib/actions";
 import { isBillDue, getNextDate } from "@/lib/utils";
@@ -20,6 +20,7 @@ export function useArcAgentPay() {
       monthlyLimit: "500",
       maxPerPayment: "150",
       spentThisMonth: "0",
+      autoMode: false,
     },
   ]);
 
@@ -42,6 +43,7 @@ export function useArcAgentPay() {
 
   const isRunningRef = useRef(false);
 
+  // ===== Connection =====
   const handleConnect = async () => {
     setIsLoading(true);
     try {
@@ -58,6 +60,7 @@ export function useArcAgentPay() {
     }
   };
 
+  // ===== Deposit =====
   const handleDeposit = async () => {
     if (!connected) {
       toast.error("Connect first");
@@ -78,6 +81,7 @@ export function useArcAgentPay() {
     }
   };
 
+  // ===== Agents =====
   const handleCreateAgent = () => {
     const newAgent: Agent = {
       id: Date.now().toString(),
@@ -86,6 +90,7 @@ export function useArcAgentPay() {
       monthlyLimit: "300",
       maxPerPayment: "100",
       spentThisMonth: "0",
+      autoMode: false,
     };
     setAgents([...agents, newAgent]);
     toast.success("New agent created");
@@ -102,6 +107,15 @@ export function useArcAgentPay() {
     toast.success("Agent status updated");
   };
 
+  const handleToggleAutoMode = (id: string) => {
+    setAgents(
+      agents.map((a) =>
+        a.id === id ? { ...a, autoMode: !a.autoMode } : a
+      )
+    );
+    toast.success("Auto mode updated");
+  };
+
   const handleSaveAgent = (updated: Agent) => {
     setAgents(agents.map((a) => (a.id === updated.id ? updated : a)));
     toast.success("Agent updated");
@@ -112,6 +126,7 @@ export function useArcAgentPay() {
       toast.info("Agent is already running");
       return;
     }
+
     isRunningRef.current = true;
     setIsLoading(true);
 
@@ -145,6 +160,11 @@ export function useArcAgentPay() {
         return;
       }
 
+      console.log(
+        "Due bills to pay:",
+        dueBills.map((b) => `${b.name} (${b.id})`)
+      );
+
       let totalSpent = parseFloat(agent.spentThisMonth);
       const newPayments: Payment[] = [];
       const updatedBills = [...bills];
@@ -177,6 +197,8 @@ export function useArcAgentPay() {
             amount: bill.amount,
             recipientAddress: bill.billerAddress,
           });
+
+          console.log(`Paid ${bill.name}:`, result);
 
           totalSpent += amount;
 
@@ -216,7 +238,9 @@ export function useArcAgentPay() {
         );
         setBills(updatedBills);
         setPayments([...newPayments, ...payments]);
-        toast.success(`${newPayments.length} due bill(s) paid by ${agent.name}`);
+        toast.success(
+          `${newPayments.length} due bill(s) paid by ${agent.name}`
+        );
       }
     } finally {
       isRunningRef.current = false;
@@ -225,6 +249,35 @@ export function useArcAgentPay() {
     }
   };
 
+  // ===== Auto Mode scheduler =====
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isRunningRef.current || !connected) return;
+
+      const autoAgents = agents.filter(
+        (a) => a.autoMode && a.status === "active"
+      );
+
+      for (const agent of autoAgents) {
+        const hasDueBills = bills.some(
+          (b) =>
+            b.status === "active" &&
+            b.agentId === agent.id &&
+            isBillDue(b.nextDate)
+        );
+
+        if (hasDueBills) {
+          console.log(`Auto-running agent: ${agent.name}`);
+          runAgent(agent.id);
+          break; // one agent at a time
+        }
+      }
+    }, 30000); // every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [agents, bills, connected]);
+
+  // ===== Bills =====
   const handleAddBill = (bill: {
     name: string;
     amount: string;
@@ -267,6 +320,8 @@ export function useArcAgentPay() {
         recipientAddress: bill.billerAddress,
       });
 
+      console.log("Spend result:", result);
+
       setPayments([
         {
           id: Date.now().toString(),
@@ -306,6 +361,7 @@ export function useArcAgentPay() {
     handleDeposit,
     handleCreateAgent,
     handleToggleStatus,
+    handleToggleAutoMode,
     handleSaveAgent,
     runAgent,
     handleAddBill,

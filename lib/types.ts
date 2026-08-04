@@ -5,6 +5,7 @@ export interface Agent {
   monthlyLimit: string;
   maxPerPayment: string;
   spentThisMonth: string;
+  autoMode: boolean; 
 }
 
 export interface Bill {

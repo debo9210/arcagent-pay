@@ -33,6 +33,7 @@ export default function ArcAgentPay() {
     handleAddBill,
     handleDeleteBill,
     handlePayBill,
+    handleToggleAutoMode,
   } = useArcAgentPay();
 
   return (
@@ -54,6 +55,7 @@ export default function ArcAgentPay() {
             onCreateAgent={handleCreateAgent}
             onRunAgent={runAgent}
             onToggleStatus={handleToggleStatus}
+            onToggleAutoMode={handleToggleAutoMode}
             onEditAgent={setEditingAgent}
             isLoading={isLoading}
           />
