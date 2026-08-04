@@ -12,10 +12,12 @@ interface Bill {
   nextDate: string;
   status: "active" | "paused";
   billerAddress: string;
+  agentId: string;
 }
 
 interface Props {
   bills: Bill[];
+  agents: { id: string; name: string }[];
   onAddBill: () => void;
   onDeleteBill: (id: string) => void;
   onPayBill: (bill: Bill) => void;
@@ -24,6 +26,7 @@ interface Props {
 
 export default function BillsCard({
   bills,
+  agents,
   onAddBill,
   onDeleteBill,
   onPayBill,
@@ -59,6 +62,9 @@ export default function BillsCard({
                     <p className="font-medium">{bill.name}</p>
                     <p className="text-sm text-zinc-400">
                       {bill.frequency} • Next: {bill.nextDate}
+                    </p>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Agent: {agents.find((a) => a.id === bill.agentId)?.name || "Unassigned"}
                     </p>
                     <p className="text-xs text-zinc-500 mt-1">
                       To: {bill.billerAddress.slice(0, 6)}...

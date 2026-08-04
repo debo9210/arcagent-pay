@@ -5,37 +5,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import EditAgentModal from "@/components/EditAgentModal";
+
+interface Agent {
+  id: string;
+  name: string;
+}
 
 interface Props {
   open: boolean;
+  agents: Agent[];
   onClose: () => void;
   onAdd: (bill: {
     name: string;
     amount: string;
     frequency: "Daily" | "Weekly" | "Monthly";
     nextDate: string;
+    billerAddress: string;
+    agentId: string;
   }) => void;
 }
 
-export default function AddBillModal({ open, onClose, onAdd }: Props) {
+export default function AddBillModal({ open, agents, onClose, onAdd }: Props) {
   const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("0.10");
   const [frequency, setFrequency] = useState<"Daily" | "Weekly" | "Monthly">("Monthly");
   const [nextDate, setNextDate] = useState("");
   const [billerAddress, setBillerAddress] = useState("");
+  const [agentId, setAgentId] = useState(agents[0]?.id || "");
 
   if (!open) return null;
 
   const handleSubmit = () => {
-    if (!name || !amount || !nextDate) return;
+    if (!name || !amount || !nextDate || !billerAddress || !agentId) {
+      return;
+    }
 
-    onAdd({ name, amount, frequency, nextDate, billerAddress });
+    onAdd({ name, amount, frequency, nextDate, billerAddress, agentId });
+
     setName("");
-    setAmount("");
+    setAmount("0.10");
     setFrequency("Monthly");
     setNextDate("");
     setBillerAddress("");
+    setAgentId(agents[0]?.id || "");
     onClose();
   };
 
@@ -87,6 +99,30 @@ export default function AddBillModal({ open, onClose, onAdd }: Props) {
             />
           </div>
 
+          <div>
+            <Label>Biller Address</Label>
+            <Input
+              value={billerAddress}
+              onChange={(e) => setBillerAddress(e.target.value)}
+              placeholder="0x..."
+            />
+          </div>
+
+          <div>
+            <Label>Assign to Agent</Label>
+            <select
+              className="w-full bg-zinc-900 border border-zinc-700 rounded-md p-2"
+              value={agentId}
+              onChange={(e) => setAgentId(e.target.value)}
+            >
+              {agents.map((agent) => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex gap-3 pt-2">
             <Button className="flex-1" onClick={handleSubmit}>
               Add Bill
@@ -95,22 +131,6 @@ export default function AddBillModal({ open, onClose, onAdd }: Props) {
               Cancel
             </Button>
           </div>
-
-          <div>
-          <Label>Biller Address</Label>
-          <Input
-            value={billerAddress}
-            onChange={(e) => setBillerAddress(e.target.value)}
-            placeholder="0x..."
-          />
-        </div>
-
-        <EditAgentModal
-          open={!!editingAgent}
-          agent={editingAgent}
-          onClose={() => setEditingAgent(null)}
-          onSave={handleSaveAgent}
-        />
         </CardContent>
       </Card>
     </div>
