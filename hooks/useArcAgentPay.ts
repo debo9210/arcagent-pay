@@ -2,7 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { connectMetaMask, depositUSDC, spendUSDC } from "@/lib/actions";
+import {
+  connectMetaMask,
+  depositUSDC,
+  transferFromAgentWallet,
+} from "@/lib/actions";
 import { isBillDue, getNextDate } from "@/lib/utils";
 import type { Agent, Bill, Payment } from "@/lib/types";
 
@@ -60,7 +64,7 @@ export function useArcAgentPay() {
     }
   };
 
-  // ===== Deposit =====
+  // ===== Deposit (MetaMask / Unified Balance) =====
   const handleDeposit = async () => {
     if (!connected) {
       toast.error("Connect first");
@@ -121,6 +125,7 @@ export function useArcAgentPay() {
     toast.success("Agent updated");
   };
 
+  // ===== Shared treasury autonomous payments =====
   const runAgent = async (agentId: string) => {
     if (isRunningRef.current) {
       toast.info("Agent is already running");
@@ -134,11 +139,6 @@ export function useArcAgentPay() {
       const agent = agents.find((a) => a.id === agentId);
       if (!agent || agent.status !== "active") {
         toast.error("Agent is not active");
-        return;
-      }
-
-      if (!connected || !address) {
-        toast.error("Connect wallet first");
         return;
       }
 
@@ -193,23 +193,30 @@ export function useArcAgentPay() {
         paidBillIds.add(bill.id);
 
         try {
-          const result = await spendUSDC({
+          // Real autonomous payment from shared Circle SCA treasury
+          const result = await transferFromAgentWallet({
             amount: bill.amount,
-            recipientAddress: bill.billerAddress,
+            destinationAddress: bill.billerAddress,
           });
 
           console.log(`Paid ${bill.name}:`, result);
 
           totalSpent += amount;
 
+          const explorerUrl =
+            result.explorerUrl ||
+            (result.txHash
+              ? `https://sepolia.basescan.org/tx/${result.txHash}`
+              : undefined);
+
           newPayments.push({
-            id: `${bill.id}-${result.txHash || Date.now()}`,
+            id: `${bill.id}-${result.txHash || result.id || Date.now()}`,
             billName: bill.name,
             amount: bill.amount,
             date: new Date().toLocaleDateString(),
-            status: "paid (on-chain)",
+            status: "paid (agent treasury)",
             txHash: result.txHash,
-            explorerUrl: result.explorerUrl,
+            explorerUrl,
           });
 
           const billIndex = updatedBills.findIndex((b) => b.id === bill.id);
@@ -245,14 +252,13 @@ export function useArcAgentPay() {
     } finally {
       isRunningRef.current = false;
       setIsLoading(false);
-      setTimeout(handleConnect, 10000);
     }
   };
 
   // ===== Auto Mode scheduler =====
   useEffect(() => {
     const interval = setInterval(() => {
-      if (isRunningRef.current || !connected) return;
+      if (isRunningRef.current) return;
 
       const autoAgents = agents.filter(
         (a) => a.autoMode && a.status === "active"
@@ -269,13 +275,13 @@ export function useArcAgentPay() {
         if (hasDueBills) {
           console.log(`Auto-running agent: ${agent.name}`);
           runAgent(agent.id);
-          break; // one agent at a time
+          break;
         }
       }
-    }, 30000); // every 30 seconds
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [agents, bills, connected]);
+  }, [agents, bills]);
 
   // ===== Bills =====
   const handleAddBill = (bill: {
@@ -303,11 +309,6 @@ export function useArcAgentPay() {
   };
 
   const handlePayBill = async (bill: Bill) => {
-    if (!connected || !address) {
-      toast.error("Connect wallet first");
-      return;
-    }
-
     if (!bill.billerAddress) {
       toast.error("This bill has no biller address");
       return;
@@ -315,28 +316,33 @@ export function useArcAgentPay() {
 
     setIsLoading(true);
     try {
-      const result = await spendUSDC({
+      const result = await transferFromAgentWallet({
         amount: bill.amount,
-        recipientAddress: bill.billerAddress,
+        destinationAddress: bill.billerAddress,
       });
 
-      console.log("Spend result:", result);
+      console.log("Pay bill result:", result);
+
+      const explorerUrl =
+        result.explorerUrl ||
+        (result.txHash
+          ? `https://sepolia.basescan.org/tx/${result.txHash}`
+          : undefined);
 
       setPayments([
         {
-          id: Date.now().toString(),
+          id: `${bill.id}-${result.txHash || result.id || Date.now()}`,
           billName: bill.name,
           amount: bill.amount,
           date: new Date().toLocaleDateString(),
-          status: "paid (on-chain)",
+          status: "paid (agent treasury)",
           txHash: result.txHash,
-          explorerUrl: result.explorerUrl,
+          explorerUrl,
         },
         ...payments,
       ]);
 
       toast.success(`Paid $${bill.amount} for ${bill.name}`);
-      setTimeout(handleConnect, 8000);
     } catch (error: any) {
       console.error("Pay error:", error);
       toast.error(error?.message || "Payment failed");

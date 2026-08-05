@@ -82,3 +82,31 @@ export async function spendUSDC({
 
   return result;
 }
+
+
+export async function transferFromAgentWallet({
+  amount,
+  destinationAddress,
+}: {
+  amount: string;
+  destinationAddress: string;
+}) {
+  const res = await fetch("/api/agent-wallet/transfer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      amount,
+      destinationAddress,
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Agent treasury transfer failed");
+  }
+
+  return data;
+}
+
+
