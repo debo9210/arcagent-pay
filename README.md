@@ -1,65 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-
 # ArcAgent Pay
 
-Autonomous AI agents that pay recurring bills using USDC on Arc / Circle stack.
+Autonomous USDC bill payments powered by **Circle** and the **Arc / Base Sepolia** stack.
+
+Users fund a shared agent treasury once. Policy-controlled agents then pay recurring bills on schedule — **without MetaMask popups** for Run / Auto payments.
 
 ## Tracks
-- Agentic Economy
-- DeFi / Fintech Infrastructure
 
-## Current Progress (Mid-Submission)
-- [x] MetaMask connection
-- [x] Unified Balance (getBalances)
-- [x] Deposit USDC into Unified Balance (Base Sepolia)
-- [ ] Agents UI
-- [ ] Recurring Bills
-- [ ] Autonomous execution
+- **Agentic Economy**
+- **DeFi / Fintech Infrastructure**
 
-## Tech Stack
-- Next.js
-- Circle App Kit (Unified Balance, Send, Bridge, Swap)
-- Viem + MetaMask
-- Base Sepolia (testnet)
+## What it does
 
-## How to Run
-1. Clone the repo
-2. `npm install`
-3. Add `.env.local` with `NEXT_PUBLIC_PRIVATE_KEY` (optional)
-4. `npm run dev`
+1. Connect MetaMask
+2. Deposit USDC into **Unified Balance**
+3. Fund the shared **Agent Treasury** (Circle SCA wallet)
+4. Create agents with spending policies
+5. Add recurring bills (daily / weekly / monthly)
+6. Run agents manually or enable **Auto Mode**
+7. Agents pay due bills on-chain and log tx links
+
+## Architecture
+
+```text
+MetaMask wallet
+  → Unified Balance (deposit / liquidity)
+  → Agent Treasury (shared Circle SCA)
+  → Bill recipients (autonomous USDC transfers)
+
+
+Agent controlsMonthly spending limit
+Max per payment
+Pause / resume
+Auto Mode
+Due-date scheduling
+Bill-to-agent assignment
+
+Key distinctionAction
+Signer
+Connect / Deposit / Fund Treasury
+MetaMask
+Run Agent / Auto Mode payments
+Circle SCA treasury (server-side)
+
+Demo flow (for judges)Open the app and Connect MetaMask (Base Sepolia)
+Deposit test USDC into Unified Balance
+Click Fund Agent Treasury
+Confirm Agent Treasury balance updates
+Add a billAmount: 0.10
+Next date: today
+Assign to an agent
+Biller address: any valid test address
+
+Click Run or turn Auto ON
+Check Payment History → View tx on BaseScan
+
+No MetaMask approval is needed for step 6.
+
+Features completedMetaMask connection
+Unified Balance (read + deposit)
+Fund agent treasury from Unified Balance
+Shared Circle SCA treasury
+Agents UI (create, pause, edit, auto mode)
+Recurring bills (create, assign, delete)
+Due-date scheduler
+Real on-chain autonomous payments
+Payment history with explorer links
+localStorage persistence
+Low-treasury guardrails
+
+Tech stackNext.js + TypeScript
+Circle App Kit (Unified Balance)
+Circle Developer-Controlled Wallets (SCA)
+Viem + MetaMask
+Base Sepolia testnet
+Tailwind + shadcn/ui
+
+How to run
+git clone <your-repo-url>
+cd arcagent-pay
+npm install
+
+Create .env.local:
+# Circle developer wallets (server only)
+CIRCLE_API_KEY=
+CIRCLE_ENTITY_SECRET=
+CIRCLE_WALLET_SET_ID=
+CIRCLE_AGENT_WALLET_ID=
+
+# Public treasury address (safe to expose)
+NEXT_PUBLIC_CIRCLE_AGENT_WALLET_ADDRESS=
+
+Start the app:
+npm run dev
+
+Open http://localhost:3000Notes 
+Use small test amounts (0.10 USDC)
+Agents / bills / payments persist in localStorage
+Run / Auto are disabled when treasury balance is too low
+Network: Base Sepolia
+
+Project statusFunctional end-to-end demo for the Programmable Money Hackathon.
+Core autonomous payment loop is live. UI polish is optional final work.
+

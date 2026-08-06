@@ -110,3 +110,38 @@ export async function transferFromAgentWallet({
 }
 
 
+
+export async function fundAgentTreasury({
+  amount,
+}: {
+  amount: string;
+}) {
+  const treasuryAddress = process.env.NEXT_PUBLIC_CIRCLE_AGENT_WALLET_ADDRESS;
+
+  if (!treasuryAddress) {
+    throw new Error("Missing NEXT_PUBLIC_CIRCLE_AGENT_WALLET_ADDRESS");
+  }
+
+  // Reuse your existing Unified Balance spend path
+  return spendUSDC({
+    amount,
+    recipientAddress: treasuryAddress,
+  });
+}
+
+
+export async function getAgentTreasuryBalance() {
+  const res = await fetch("/api/agent-wallet/balance", {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to fetch treasury balance");
+  }
+
+  return data.balance as string;
+}
+
+

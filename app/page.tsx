@@ -5,6 +5,7 @@ import { useArcAgentPay } from "@/hooks/useArcAgentPay";
 import DashboardHeader from "@/components/DashboardHeader";
 import BalanceCard from "@/components/BalanceCard";
 import DepositButton from "@/components/DepositButton";
+import FundTreasuryButton from "@/components/FundTreasuryButton";
 import AgentsCard from "@/components/AgentsCard";
 import BillsCard from "@/components/BillsCard";
 import AddBillModal from "@/components/AddBillModal";
@@ -14,6 +15,8 @@ import PaymentHistory from "@/components/PaymentHistory";
 export default function ArcAgentPay() {
   const {
     balance,
+    treasuryBalance,
+    treasuryTooLow,
     address,
     connected,
     isLoading,
@@ -26,28 +29,46 @@ export default function ArcAgentPay() {
     setEditingAgent,
     handleConnect,
     handleDeposit,
+    handleFundTreasury,
     handleCreateAgent,
     handleToggleStatus,
+    handleToggleAutoMode,
     handleSaveAgent,
     runAgent,
     handleAddBill,
     handleDeleteBill,
     handlePayBill,
-    handleToggleAutoMode,
   } = useArcAgentPay();
+
+  const treasuryAddress =
+    process.env.NEXT_PUBLIC_CIRCLE_AGENT_WALLET_ADDRESS || "";
 
   return (
     <div className="min-h-screen bg-zinc-950 p-8">
       <div className="max-w-5xl mx-auto">
         <DashboardHeader isLoading={isLoading} onConnect={handleConnect} />
 
-        <BalanceCard balance={balance} address={address} connected={connected} />
-
-        <DepositButton
+        <BalanceCard
+          balance={balance}
+          treasuryBalance={treasuryBalance}
+          address={address}
           connected={connected}
-          isLoading={isLoading}
-          onDeposit={handleDeposit}
+          treasuryAddress={treasuryAddress}
         />
+
+        <div className="flex flex-wrap gap-3">
+          <DepositButton
+            connected={connected}
+            isLoading={isLoading}
+            onDeposit={handleDeposit}
+          />
+
+          <FundTreasuryButton
+            connected={connected}
+            isLoading={isLoading}
+            onFund={() => handleFundTreasury("5.00")}
+          />
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
           <AgentsCard
@@ -58,6 +79,7 @@ export default function ArcAgentPay() {
             onToggleAutoMode={handleToggleAutoMode}
             onEditAgent={setEditingAgent}
             isLoading={isLoading}
+            treasuryTooLow={treasuryTooLow}
           />
 
           <BillsCard

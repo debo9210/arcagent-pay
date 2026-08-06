@@ -6,46 +6,105 @@ import {
   connectMetaMask,
   depositUSDC,
   transferFromAgentWallet,
+  fundAgentTreasury,
+  getAgentTreasuryBalance,
 } from "@/lib/actions";
 import { isBillDue, getNextDate } from "@/lib/utils";
 import type { Agent, Bill, Payment } from "@/lib/types";
 
+const STORAGE_KEY = "arcagent-pay-state";
+
+function loadState() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveState(data: {
+  agents: Agent[];
+  bills: Bill[];
+  payments: Payment[];
+}) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error("Failed to save state:", e);
+  }
+}
+
 export function useArcAgentPay() {
+  const saved = typeof window !== "undefined" ? loadState() : null;
+
   const [balance, setBalance] = useState("0.00");
+  const [treasuryBalance, setTreasuryBalance] = useState("0.00");
   const [isLoading, setIsLoading] = useState(false);
   const [connected, setConnected] = useState(false);
   const [address, setAddress] = useState("");
 
-  const [agents, setAgents] = useState<Agent[]>([
-    {
-      id: "1",
-      name: "Main Bill Agent",
-      status: "active",
-      monthlyLimit: "500",
-      maxPerPayment: "150",
-      spentThisMonth: "0",
-      autoMode: false,
-    },
-  ]);
+  const [agents, setAgents] = useState<Agent[]>(
+    saved?.agents || [
+      {
+        id: "1",
+        name: "Main Bill Agent",
+        status: "active",
+        monthlyLimit: "500",
+        maxPerPayment: "150",
+        spentThisMonth: "0",
+        autoMode: false,
+      },
+    ]
+  );
 
-  const [bills, setBills] = useState<Bill[]>([
-    {
-      id: "1",
-      name: "Electricity",
-      amount: "0.10",
-      frequency: "Monthly",
-      nextDate: "2026-08-01",
-      status: "active",
-      billerAddress: "0xc5899371b8ff1aba09cdc8c8d21ba976e43c95b6",
-      agentId: "1",
-    },
-  ]);
+  const [bills, setBills] = useState<Bill[]>(
+    saved?.bills || [
+      {
+        id: "1",
+        name: "Electricity",
+        amount: "0.10",
+        frequency: "Monthly",
+        nextDate: "2026-08-01",
+        status: "active",
+        billerAddress: "0xc5899371b8ff1aba09cdc8c8d21ba976e43c95b6",
+        agentId: "1",
+      },
+    ]
+  );
 
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [payments, setPayments] = useState<Payment[]>(saved?.payments || []);
   const [showAddBill, setShowAddBill] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
 
   const isRunningRef = useRef(false);
+
+  // Persist agents / bills / payments
+  useEffect(() => {
+    saveState({ agents, bills, payments });
+  }, [agents, bills, payments]);
+
+  // ===== Treasury balance =====
+  const refreshTreasuryBalance = async () => {
+    try {
+      const bal = await getAgentTreasuryBalance();
+      setTreasuryBalance(parseFloat(bal || "0").toFixed(2));
+    } catch (error) {
+      console.error("Failed to refresh treasury balance:", error);
+    }
+  };
+
+  useEffect(() => {
+    refreshTreasuryBalance();
+  }, []);
+
+  const hasEnoughTreasury = (amount: string) => {
+    return parseFloat(treasuryBalance || "0") >= parseFloat(amount || "0");
+  };
+
+  const treasuryTooLow = parseFloat(treasuryBalance || "0") <= 0;
 
   // ===== Connection =====
   const handleConnect = async () => {
@@ -56,6 +115,7 @@ export function useArcAgentPay() {
       setBalance(total);
       setConnected(true);
       toast.success(`Connected • $${total} USDC`);
+      await refreshTreasuryBalance();
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || "Connection failed");
@@ -64,7 +124,7 @@ export function useArcAgentPay() {
     }
   };
 
-  // ===== Deposit (MetaMask / Unified Balance) =====
+  // ===== Deposit into Unified Balance =====
   const handleDeposit = async () => {
     if (!connected) {
       toast.error("Connect first");
@@ -76,10 +136,37 @@ export function useArcAgentPay() {
       const result = await depositUSDC("5.00");
       console.log("Deposit result:", result);
       toast.success("Deposit submitted! Refreshing balance...");
-      setTimeout(handleConnect, 12000);
+      setTimeout(() => {
+        handleConnect();
+      }, 12000);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || "Deposit failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ===== Fund shared agent treasury =====
+  const handleFundTreasury = async (amount = "5.00") => {
+    if (!connected) {
+      toast.error("Connect MetaMask first");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await fundAgentTreasury({ amount });
+      console.log("Fund treasury result:", result);
+      toast.success(`Sent $${amount} USDC to agent treasury`);
+
+      setTimeout(() => {
+        handleConnect();
+        refreshTreasuryBalance();
+      }, 10000);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || "Failed to fund agent treasury");
     } finally {
       setIsLoading(false);
     }
@@ -142,6 +229,11 @@ export function useArcAgentPay() {
         return;
       }
 
+      if (treasuryTooLow) {
+        toast.error("Treasury is empty. Fund agent treasury first.");
+        return;
+      }
+
       const dueBills = Array.from(
         new Map(
           bills
@@ -157,6 +249,18 @@ export function useArcAgentPay() {
 
       if (dueBills.length === 0) {
         toast.info("No bills are due right now");
+        return;
+      }
+
+      const totalDue = dueBills.reduce(
+        (sum, b) => sum + parseFloat(b.amount || "0"),
+        0
+      );
+
+      if (parseFloat(treasuryBalance || "0") < totalDue) {
+        toast.error(
+          `Treasury too low. Need ~$${totalDue.toFixed(2)} USDC, have $${treasuryBalance}`
+        );
         return;
       }
 
@@ -190,10 +294,14 @@ export function useArcAgentPay() {
           continue;
         }
 
+        if (!hasEnoughTreasury(bill.amount)) {
+          toast.error(`Treasury too low to pay ${bill.name}`);
+          break;
+        }
+
         paidBillIds.add(bill.id);
 
         try {
-          // Real autonomous payment from shared Circle SCA treasury
           const result = await transferFromAgentWallet({
             amount: bill.amount,
             destinationAddress: bill.billerAddress,
@@ -248,6 +356,7 @@ export function useArcAgentPay() {
         toast.success(
           `${newPayments.length} due bill(s) paid by ${agent.name}`
         );
+        await refreshTreasuryBalance();
       }
     } finally {
       isRunningRef.current = false;
@@ -259,6 +368,7 @@ export function useArcAgentPay() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (isRunningRef.current) return;
+      if (parseFloat(treasuryBalance || "0") <= 0) return;
 
       const autoAgents = agents.filter(
         (a) => a.autoMode && a.status === "active"
@@ -281,7 +391,7 @@ export function useArcAgentPay() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [agents, bills]);
+  }, [agents, bills, treasuryBalance]);
 
   // ===== Bills =====
   const handleAddBill = (bill: {
@@ -314,6 +424,11 @@ export function useArcAgentPay() {
       return;
     }
 
+    if (!hasEnoughTreasury(bill.amount)) {
+      toast.error("Treasury balance too low");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const result = await transferFromAgentWallet({
@@ -343,6 +458,7 @@ export function useArcAgentPay() {
       ]);
 
       toast.success(`Paid $${bill.amount} for ${bill.name}`);
+      await refreshTreasuryBalance();
     } catch (error: any) {
       console.error("Pay error:", error);
       toast.error(error?.message || "Payment failed");
@@ -353,6 +469,8 @@ export function useArcAgentPay() {
 
   return {
     balance,
+    treasuryBalance,
+    treasuryTooLow,
     address,
     connected,
     isLoading,
@@ -365,6 +483,7 @@ export function useArcAgentPay() {
     setEditingAgent,
     handleConnect,
     handleDeposit,
+    handleFundTreasury,
     handleCreateAgent,
     handleToggleStatus,
     handleToggleAutoMode,
@@ -373,5 +492,6 @@ export function useArcAgentPay() {
     handleAddBill,
     handleDeleteBill,
     handlePayBill,
+    refreshTreasuryBalance,
   };
 }

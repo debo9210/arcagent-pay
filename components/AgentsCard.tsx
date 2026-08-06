@@ -13,6 +13,7 @@ interface Props {
   onToggleAutoMode: (id: string) => void;
   onEditAgent: (agent: Agent) => void;
   isLoading: boolean;
+  treasuryTooLow?: boolean;
 }
 
 export default function AgentsCard({
@@ -23,6 +24,7 @@ export default function AgentsCard({
   onToggleAutoMode,
   onEditAgent,
   isLoading,
+  treasuryTooLow = false,
 }: Props) {
   return (
     <Card>
@@ -38,6 +40,12 @@ export default function AgentsCard({
       </CardHeader>
 
       <CardContent>
+        {treasuryTooLow && (
+          <p className="text-xs text-amber-400 mb-4">
+            Treasury empty — fund agents before running
+          </p>
+        )}
+
         {agents.length === 0 ? (
           <p className="text-sm text-zinc-400 text-center py-6">
             No agents yet. Create your first payment agent.
@@ -80,7 +88,11 @@ export default function AgentsCard({
                     size="sm"
                     className="flex-1"
                     onClick={() => onRunAgent(agent.id)}
-                    disabled={isLoading || agent.status !== "active"}
+                    disabled={
+                      isLoading ||
+                      agent.status !== "active" ||
+                      treasuryTooLow
+                    }
                   >
                     <Play className="w-4 h-4 mr-1" />
                     Run
@@ -90,6 +102,7 @@ export default function AgentsCard({
                     size="sm"
                     variant={agent.autoMode ? "default" : "outline"}
                     onClick={() => onToggleAutoMode(agent.id)}
+                    disabled={treasuryTooLow && !agent.autoMode}
                   >
                     {agent.autoMode ? "Auto ON" : "Auto OFF"}
                   </Button>
