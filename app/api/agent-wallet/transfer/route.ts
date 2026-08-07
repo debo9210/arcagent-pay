@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCircleWalletsClient } from "@/lib/circle-wallets";
 
-const BASE_SEPOLIA_USDC_TOKEN_ID = "bdf128b4-827b-5267-8f9e-243694989b5f";
+// Arc Testnet USDC (ERC-20 interface)
+const ARC_TESTNET_USDC_TOKEN_ID = "ef87c8c3-85de-598a-af50-c5135eecfa74";
+const ARC_EXPLORER = "https://testnet.arcscan.app";
 
 export async function POST(req: Request) {
   try {
@@ -29,7 +31,7 @@ export async function POST(req: Request) {
 
     const transferResponse = await client.createTransaction({
       walletId,
-      tokenId: BASE_SEPOLIA_USDC_TOKEN_ID,
+      tokenId: ARC_TESTNET_USDC_TOKEN_ID,
       destinationAddress,
       amount: [String(amount)],
       fee: {
@@ -43,7 +45,6 @@ export async function POST(req: Request) {
       throw new Error("No transaction id returned");
     }
 
-    // Poll until complete (or failed)
     const terminal = new Set(["COMPLETE", "FAILED", "CANCELLED", "DENIED"]);
     let state = transferResponse.data?.state || "INITIATED";
     let txHash: string | undefined = transferResponse.data?.txHash;
@@ -59,12 +60,11 @@ export async function POST(req: Request) {
       id: transactionId,
       state,
       txHash,
-      explorerUrl: txHash
-        ? `https://sepolia.basescan.org/tx/${txHash}`
-        : undefined,
+      chain: "ARC-TESTNET",
+      explorerUrl: txHash ? `${ARC_EXPLORER}/tx/${txHash}` : undefined,
     });
   } catch (error: any) {
-    console.error("Transfer error:", error);
+    console.error("Arc transfer error:", error);
     return NextResponse.json(
       { error: error?.message || "Transfer failed" },
       { status: 500 }

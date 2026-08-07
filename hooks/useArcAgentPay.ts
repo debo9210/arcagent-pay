@@ -314,7 +314,7 @@ export function useArcAgentPay() {
           const explorerUrl =
             result.explorerUrl ||
             (result.txHash
-              ? `https://sepolia.basescan.org/tx/${result.txHash}`
+              ? `https://testnet.arcscan.app/tx/${result.txHash}`
               : undefined);
 
           newPayments.push({
@@ -441,7 +441,7 @@ export function useArcAgentPay() {
       const explorerUrl =
         result.explorerUrl ||
         (result.txHash
-          ? `https://sepolia.basescan.org/tx/${result.txHash}`
+          ? `https://testnet.arcscan.app/tx/${result.txHash}`
           : undefined);
 
       setPayments([
