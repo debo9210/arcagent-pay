@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
   connectMetaMask,
-  depositUSDC,
-  transferFromAgentWallet,
+  depositUSDCFromChain,
   fundAgentTreasury,
+  transferFromAgentWallet,
   getAgentTreasuryBalance,
 } from "@/lib/actions";
 import { isBillDue, getNextDate } from "@/lib/utils";
@@ -125,27 +125,33 @@ export function useArcAgentPay() {
   };
 
   // ===== Deposit into Unified Balance =====
-  const handleDeposit = async () => {
-    if (!connected) {
-      toast.error("Connect first");
-      return;
-    }
+  const handleDeposit = async (
+  chain:
+    | "Arc_Testnet"
+    | "Base_Sepolia"
+    | "Ethereum_Sepolia"
+    | "Arbitrum_Sepolia" = "Base_Sepolia",
+  amount = "5.00"
+) => {
+  if (!connected) {
+    toast.error("Connect first");
+    return;
+  }
 
-    setIsLoading(true);
-    try {
-      const result = await depositUSDC("5.00");
-      console.log("Deposit result:", result);
-      toast.success("Deposit submitted! Refreshing balance...");
-      setTimeout(() => {
-        handleConnect();
-      }, 12000);
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.message || "Deposit failed");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  setIsLoading(true);
+  try {
+    toast.info(`Switch MetaMask to ${chain.replace("_", " ")} before confirming`);
+    const result = await depositUSDCFromChain({ amount, chain });
+    console.log("Deposit result:", result);
+    toast.success(`Deposited $${amount} from ${chain}`);
+    setTimeout(() => handleConnect(), 12000);
+  } catch (error: any) {
+    console.error(error);
+    toast.error(error?.message || "Deposit failed");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // ===== Fund shared agent treasury =====
   const handleFundTreasury = async (amount = "5.00") => {

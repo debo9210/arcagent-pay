@@ -22,10 +22,10 @@ Users fund a shared agent treasury once. Policy-controlled agents then pay recur
 ## Architecture
 
 ```text
-MetaMask wallet
-  → Unified Balance (deposit / liquidity)
-  → Agent Treasury (shared Circle SCA)
-  → Bill recipients (autonomous USDC transfers)
+MetaMask / multi-chain funding
+  → Unified Balance (optional)
+  → Arc Testnet Agent Treasury (Circle SCA)
+  → Bill recipients on Arc
 
 
 Agent controlsMonthly spending limit

@@ -60,13 +60,15 @@ export default function ArcAgentPay() {
           <DepositButton
             connected={connected}
             isLoading={isLoading}
-            onDeposit={handleDeposit}
+            onDeposit={(chain, amount) =>
+              handleDeposit(chain as any, amount || "5.00")
+            }
           />
 
           <FundTreasuryButton
             connected={connected}
             isLoading={isLoading}
-            onFund={() => handleFundTreasury("5.00")}
+            onFund={() => handleFundTreasury("1.00")}
           />
         </div>
 

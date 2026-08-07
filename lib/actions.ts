@@ -31,7 +31,17 @@ export async function connectMetaMask() {
   return { address, total, balances };
 }
 
-export async function depositUSDC(amount: string = "5.00") {
+export async function depositUSDCFromChain({
+  amount,
+  chain,
+}: {
+  amount: string;
+  chain:
+    | "Arc_Testnet"
+    | "Base_Sepolia"
+    | "Ethereum_Sepolia"
+    | "Arbitrum_Sepolia";
+}) {
   if (!(window as any).ethereum) {
     throw new Error("MetaMask not found");
   }
@@ -39,18 +49,20 @@ export async function depositUSDC(amount: string = "5.00") {
   const provider = (window as any).ethereum;
   await provider.request({ method: "eth_requestAccounts" });
 
+  // User must already be on the selected chain in MetaMask
   const adapter = await createViemAdapterFromProvider({ provider });
 
   const result = await kit.unifiedBalance.deposit({
-    from: {
-      adapter,
-      chain: "Base_Sepolia",
-    },
-    amount,
+    from: { adapter, chain },
+    amount: String(amount),
     token: "USDC",
   });
 
   return result;
+}
+
+export async function depositUSDC(amount = "5.00") {
+  return depositUSDCFromChain({ amount, chain: "Base_Sepolia" });
 }
 
 export async function spendUSDC({
@@ -83,7 +95,6 @@ export async function spendUSDC({
   return result;
 }
 
-
 export async function transferFromAgentWallet({
   amount,
   destinationAddress,
@@ -109,26 +120,35 @@ export async function transferFromAgentWallet({
   return data;
 }
 
-
-
-export async function fundAgentTreasury({
-  amount,
-}: {
-  amount: string;
-}) {
+export async function fundAgentTreasury({ amount }: { amount: string }) {
   const treasuryAddress = process.env.NEXT_PUBLIC_CIRCLE_AGENT_WALLET_ADDRESS;
-
   if (!treasuryAddress) {
     throw new Error("Missing NEXT_PUBLIC_CIRCLE_AGENT_WALLET_ADDRESS");
   }
 
-  // Reuse your existing Unified Balance spend path
-  return spendUSDC({
-    amount,
-    recipientAddress: treasuryAddress,
-  });
-}
+  if (!(window as any).ethereum) {
+    throw new Error("MetaMask not found");
+  }
 
+  const provider = (window as any).ethereum;
+  await provider.request({ method: "eth_requestAccounts" });
+
+  const adapter = await createViemAdapterFromProvider({ provider });
+
+  // Auto-route sources from Unified Balance → deliver on Arc Testnet
+  const result = await kit.unifiedBalance.spend({
+    amount: String(amount),
+    token: "USDC",
+    from: { adapter },
+    to: {
+      chain: "Arc_Testnet",
+      recipientAddress: treasuryAddress,
+      useForwarder: true,
+    },
+  });
+
+  return result;
+}
 
 export async function getAgentTreasuryBalance() {
   const res = await fetch("/api/agent-wallet/balance", {
@@ -143,5 +163,3 @@ export async function getAgentTreasuryBalance() {
 
   return data.balance as string;
 }
-
-
