@@ -17,9 +17,17 @@ export default function FundTreasuryButton({
   if (!connected) return null;
 
   return (
-    <Button onClick={onFund} disabled={isLoading} className="mt-4 ml-3">
-      <Landmark className="mr-2 h-4 w-4" />
-      Fund Agent Treasury ($5)
-    </Button>
+    <div className="flex flex-col gap-2">
+      <label className="text-xs text-zinc-500">Agent treasury</label>
+      <Button
+        onClick={onFund}
+        disabled={isLoading}
+        variant="secondary"
+        className="h-10"
+      >
+        <Landmark className="mr-2 h-4 w-4" />
+        Fund Arc Treasury ($1)
+      </Button>
+    </div>
   );
 }

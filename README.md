@@ -43,18 +43,17 @@ Run Agent / Auto Mode payments
 Circle SCA treasury (server-side)
 
 Demo flow (for judges)Open the app and Connect MetaMask (Base Sepolia)
-Deposit test USDC into Unified Balance
-Click Fund Agent Treasury
-Confirm Agent Treasury balance updates
-Add a billAmount: 0.10
-Next date: today
-Assign to an agent
-Biller address: any valid test address
+1. Deposit USDC into Unified Balance from Base, Ethereum, or Arc
+2. Fund **Arc Testnet Treasury** from Unified Balance
+3. Add a billAmount: 0.10
+4. Next date: today
+5. Assign to an agent
+6. Biller address: any valid test address
 
-Click Run or turn Auto ON
+7. Click Run or turn Auto ON
 Check Payment History → View tx on BaseScan
 
-No MetaMask approval is needed for step 6.
+No MetaMask approval is needed for step 7.
 
 Features completedMetaMask connection
 Unified Balance (read + deposit)

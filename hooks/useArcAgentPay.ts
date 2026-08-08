@@ -37,54 +37,65 @@ function saveState(data: {
   }
 }
 
-export function useArcAgentPay() {
-  const saved = typeof window !== "undefined" ? loadState() : null;
+const defaultAgents: Agent[] = [
+  {
+    id: "1",
+    name: "Main Bill Agent",
+    status: "active",
+    monthlyLimit: "500",
+    maxPerPayment: "150",
+    spentThisMonth: "0",
+    autoMode: false,
+  },
+];
 
+const defaultBills: Bill[] = [
+  {
+    id: "1",
+    name: "Electricity",
+    amount: "0.10",
+    frequency: "Monthly",
+    nextDate: "2026-08-01",
+    status: "active",
+    billerAddress: "0xc5899371b8ff1aba09cdc8c8d21ba976e43c95b6",
+    agentId: "1",
+  },
+];
+
+export function useArcAgentPay() {
+  // Always start with the same defaults on server + first client render
   const [balance, setBalance] = useState("0.00");
   const [treasuryBalance, setTreasuryBalance] = useState("0.00");
   const [isLoading, setIsLoading] = useState(false);
   const [connected, setConnected] = useState(false);
   const [address, setAddress] = useState("");
 
-  const [agents, setAgents] = useState<Agent[]>(
-    saved?.agents || [
-      {
-        id: "1",
-        name: "Main Bill Agent",
-        status: "active",
-        monthlyLimit: "500",
-        maxPerPayment: "150",
-        spentThisMonth: "0",
-        autoMode: false,
-      },
-    ]
-  );
+  const [agents, setAgents] = useState<Agent[]>(defaultAgents);
+  const [bills, setBills] = useState<Bill[]>(defaultBills);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [hasHydrated, setHasHydrated] = useState(false);
 
-  const [bills, setBills] = useState<Bill[]>(
-    saved?.bills || [
-      {
-        id: "1",
-        name: "Electricity",
-        amount: "0.10",
-        frequency: "Monthly",
-        nextDate: "2026-08-01",
-        status: "active",
-        billerAddress: "0xc5899371b8ff1aba09cdc8c8d21ba976e43c95b6",
-        agentId: "1",
-      },
-    ]
-  );
-
-  const [payments, setPayments] = useState<Payment[]>(saved?.payments || []);
   const [showAddBill, setShowAddBill] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
 
   const isRunningRef = useRef(false);
 
-  // Persist agents / bills / payments
+  // Load from localStorage only after mount (avoids hydration mismatch)
   useEffect(() => {
+    const saved = loadState();
+    if (saved) {
+      if (saved.agents?.length) setAgents(saved.agents);
+      if (saved.bills?.length) setBills(saved.bills);
+      if (saved.payments?.length) setPayments(saved.payments);
+    }
+    setHasHydrated(true);
+  }, []);
+
+  // Persist only after hydration so defaults don't overwrite saved state
+  useEffect(() => {
+    if (!hasHydrated) return;
     saveState({ agents, bills, payments });
-  }, [agents, bills, payments]);
+  }, [agents, bills, payments, hasHydrated]);
 
   // ===== Treasury balance =====
   const refreshTreasuryBalance = async () => {
@@ -126,32 +137,30 @@ export function useArcAgentPay() {
 
   // ===== Deposit into Unified Balance =====
   const handleDeposit = async (
-  chain:
-    | "Arc_Testnet"
-    | "Base_Sepolia"
-    | "Ethereum_Sepolia"
-    | "Arbitrum_Sepolia" = "Base_Sepolia",
-  amount = "5.00"
-) => {
-  if (!connected) {
-    toast.error("Connect first");
-    return;
-  }
+    chain: "Arc_Testnet" | "Base_Sepolia" | "Ethereum_Sepolia",
+    amount = "5.00"
+  ) => {
+    if (!connected) {
+      toast.error("Connect first");
+      return;
+    }
 
-  setIsLoading(true);
-  try {
-    toast.info(`Switch MetaMask to ${chain.replace("_", " ")} before confirming`);
-    const result = await depositUSDCFromChain({ amount, chain });
-    console.log("Deposit result:", result);
-    toast.success(`Deposited $${amount} from ${chain}`);
-    setTimeout(() => handleConnect(), 12000);
-  } catch (error: any) {
-    console.error(error);
-    toast.error(error?.message || "Deposit failed");
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    try {
+      toast.info(
+        `Switch MetaMask to ${chain.replace("_", " ")} before confirming`
+      );
+      const result = await depositUSDCFromChain({ amount, chain });
+      console.log("Deposit result:", result);
+      toast.success(`Deposited $${amount} from ${chain}`);
+      setTimeout(() => handleConnect(), 12000);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || "Deposit failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // ===== Fund shared agent treasury =====
   const handleFundTreasury = async (amount = "5.00") => {

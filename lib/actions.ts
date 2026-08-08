@@ -39,8 +39,7 @@ export async function depositUSDCFromChain({
   chain:
     | "Arc_Testnet"
     | "Base_Sepolia"
-    | "Ethereum_Sepolia"
-    | "Arbitrum_Sepolia";
+    | "Ethereum_Sepolia";
 }) {
   if (!(window as any).ethereum) {
     throw new Error("MetaMask not found");
@@ -135,19 +134,42 @@ export async function fundAgentTreasury({ amount }: { amount: string }) {
 
   const adapter = await createViemAdapterFromProvider({ provider });
 
-  // Auto-route sources from Unified Balance → deliver on Arc Testnet
-  const result = await kit.unifiedBalance.spend({
-    amount: String(amount),
-    token: "USDC",
+  // Small buffer covers intermittent Gateway forwarding fee shortfalls
+  const bufferedAmount = (parseFloat(amount) + 0.01).toFixed(2);
+
+  const spendParams = {
+    amount: bufferedAmount,
+    token: "USDC" as const,
     from: { adapter },
     to: {
-      chain: "Arc_Testnet",
+      chain: "Arc_Testnet" as const,
       recipientAddress: treasuryAddress,
       useForwarder: true,
     },
-  });
+  };
 
-  return result;
+  try {
+    const result = await kit.unifiedBalance.spend(spendParams);
+    return result;
+  } catch (error: any) {
+    const msg = error?.message || "";
+
+    // Retry once if Gateway forwarding fee quote was slightly short
+    if (msg.includes("forwarding fee") || msg.includes("maxFee")) {
+      await new Promise((r) => setTimeout(r, 3000));
+
+      const retryAmount = (parseFloat(amount) + 0.02).toFixed(2);
+
+      const result = await kit.unifiedBalance.spend({
+        ...spendParams,
+        amount: retryAmount,
+      });
+
+      return result;
+    }
+
+    throw error;
+  }
 }
 
 export async function getAgentTreasuryBalance() {

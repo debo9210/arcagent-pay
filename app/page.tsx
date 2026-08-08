@@ -56,21 +56,21 @@ export default function ArcAgentPay() {
           treasuryAddress={treasuryAddress}
         />
 
-        <div className="flex flex-wrap gap-3">
-          <DepositButton
-            connected={connected}
-            isLoading={isLoading}
-            onDeposit={(chain, amount) =>
-              handleDeposit(chain as any, amount || "5.00")
-            }
-          />
+       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap">
+        <DepositButton
+          connected={connected}
+          isLoading={isLoading}
+          onDeposit={(chain, amount) =>
+            handleDeposit(chain as any, amount || "5.00")
+          }
+        />
 
-          <FundTreasuryButton
-            connected={connected}
-            isLoading={isLoading}
-            onFund={() => handleFundTreasury("1.00")}
-          />
-        </div>
+        <FundTreasuryButton
+          connected={connected}
+          isLoading={isLoading}
+          onFund={() => handleFundTreasury("1.00")}
+        />
+      </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
           <AgentsCard

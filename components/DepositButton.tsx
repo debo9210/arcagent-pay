@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 const CHAINS = [
   { id: "Base_Sepolia", label: "Base Sepolia" },
   { id: "Ethereum_Sepolia", label: "Ethereum Sepolia" },
-  { id: "Arbitrum_Sepolia", label: "Arbitrum Sepolia" },
   { id: "Arc_Testnet", label: "Arc Testnet" },
 ] as const;
 
@@ -29,26 +28,30 @@ export default function DepositButton({
     CHAINS.find((c) => c.id === chain)?.label || chain;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <select
-        value={chain}
-        onChange={(e) => setChain(e.target.value)}
-        className="h-10 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm text-zinc-100"
-        disabled={isLoading}
-      >
-        {CHAINS.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.label}
-          </option>
-        ))}
-      </select>
+    <div className="flex flex-col gap-2">
+      <label className="text-xs text-zinc-500">Deposit source</label>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={chain}
+          onChange={(e) => setChain(e.target.value)}
+          className="h-10 min-w-[160px] rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm text-zinc-100"
+          disabled={isLoading}
+        >
+          {CHAINS.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+        </select>
 
-      <Button
-        disabled={isLoading}
-        onClick={() => onDeposit(chain, "5.00")}
-      >
-        Deposit $5 from {selectedLabel}
-      </Button>
+        <Button
+          disabled={isLoading}
+          onClick={() => onDeposit(chain, "5.00")}
+          className="h-10"
+        >
+          Deposit $5 from {selectedLabel}
+        </Button>
+      </div>
     </div>
   );
 }

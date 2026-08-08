@@ -51,14 +51,14 @@ export default function BalanceCard({
 
       <Card>
         <CardHeader>
-          <CardTitle>Agent Treasury (USDC)</CardTitle>
+          <CardTitle>Arc Testnet Treasury (USDC)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-5xl font-bold text-blue-400">
             ${parseFloat(treasuryBalance || "0").toFixed(2)}
           </div>
           <p className="text-zinc-400 mt-2">
-            Shared funds used by autonomous agents
+            Shared agent funds on Arc — used for autonomous bill payments
           </p>
 
           {treasuryAddress && (
