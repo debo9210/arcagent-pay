@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCircleWalletsClient } from "@/lib/circle-wallets";
 
-// Arc Testnet USDC (ERC-20 interface)
 const ARC_TESTNET_USDC_TOKEN_ID = "ef87c8c3-85de-598a-af50-c5135eecfa74";
 const ARC_EXPLORER = "https://testnet.arcscan.app";
 
@@ -45,15 +44,19 @@ export async function POST(req: Request) {
       throw new Error("No transaction id returned");
     }
 
+    // Create response has id/state only — txHash comes from polling
     const terminal = new Set(["COMPLETE", "FAILED", "CANCELLED", "DENIED"]);
-    let state = transferResponse.data?.state || "INITIATED";
-    let txHash: string | undefined = transferResponse.data?.txHash;
+    let state: string = transferResponse.data?.state || "INITIATED";
+    let txHash: string | undefined;
 
-    for (let i = 0; i < 20 && !terminal.has(state); i++) {
+    for (let i = 0; i < 12 && !terminal.has(state); i++) {
       await new Promise((r) => setTimeout(r, 2000));
       const poll = await client.getTransaction({ id: transactionId });
-      state = poll.data?.transaction?.state || state;
-      txHash = poll.data?.transaction?.txHash || txHash;
+      const tx = poll.data?.transaction;
+      state = tx?.state || state;
+      if (tx?.txHash) {
+        txHash = tx.txHash;
+      }
     }
 
     return NextResponse.json({
