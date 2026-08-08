@@ -61,14 +61,14 @@ export default function ArcAgentPay() {
           connected={connected}
           isLoading={isLoading}
           onDeposit={(chain, amount) =>
-            handleDeposit(chain as any, amount || "5.00")
+            handleDeposit(chain as "Arc_Testnet" | "Base_Sepolia" | "Ethereum_Sepolia", amount)
           }
         />
 
         <FundTreasuryButton
           connected={connected}
           isLoading={isLoading}
-          onFund={() => handleFundTreasury("1.00")}
+          onFund={(amount) => handleFundTreasury(amount)}
         />
       </div>
 

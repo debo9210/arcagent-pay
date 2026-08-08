@@ -145,6 +145,11 @@ export function useArcAgentPay() {
       return;
     }
 
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Enter a valid amount");
+      return;
+    }
+
     setIsLoading(true);
     try {
       toast.info(
@@ -166,6 +171,11 @@ export function useArcAgentPay() {
   const handleFundTreasury = async (amount = "5.00") => {
     if (!connected) {
       toast.error("Connect MetaMask first");
+      return;
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error("Enter a valid amount");
       return;
     }
 
