@@ -28,6 +28,7 @@ export default function ArcAgentPay() {
     setShowAddBill,
     setEditingAgent,
     handleConnect,
+    handleDisconnect,
     handleDeposit,
     handleFundTreasury,
     handleCreateAgent,
@@ -46,7 +47,13 @@ export default function ArcAgentPay() {
   return (
     <div className="min-h-screen bg-zinc-950 p-8">
       <div className="max-w-5xl mx-auto">
-        <DashboardHeader isLoading={isLoading} onConnect={handleConnect} />
+        <DashboardHeader
+          isLoading={isLoading}
+          connected={connected}
+          address={address}
+          onConnect={handleConnect}
+          onDisconnect={handleDisconnect}
+        />
 
         <BalanceCard
           balance={balance}

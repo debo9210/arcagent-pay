@@ -135,6 +135,15 @@ export function useArcAgentPay() {
     }
   };
 
+  // ===== Disconnect =====
+
+  const handleDisconnect = () => {
+    setConnected(false);
+    setAddress("");
+    setBalance("0.00");
+    toast.info("Wallet disconnected");
+  };
+
   // ===== Deposit into Unified Balance =====
   const handleDeposit = async (
     chain: "Arc_Testnet" | "Base_Sepolia" | "Ethereum_Sepolia",
@@ -507,6 +516,7 @@ export function useArcAgentPay() {
     setShowAddBill,
     setEditingAgent,
     handleConnect,
+    handleDisconnect,
     handleDeposit,
     handleFundTreasury,
     handleCreateAgent,
